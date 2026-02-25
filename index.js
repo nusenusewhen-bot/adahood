@@ -229,7 +229,7 @@ client.on(Events.MessageCreate, async (message) => {
       const die2 = Math.floor(Math.random() * 6) + 1;
       
       const embed = new EmbedBuilder()
-        .setTitle("Da Hood Casino's Dice Roll (6-sided)")
+        .setTitle("Dice Roll (6-sided)")
         .setDescription(`🎲 ${message.member.displayName} rolled ${die1} & ${die2}`)
         .setColor(0x2B2D31);
       
@@ -311,7 +311,7 @@ client.on(Events.MessageCreate, async (message) => {
       
       const embed = new EmbedBuilder()
         .setTitle('Support Center')
-        .setDescription('Need help? Select an option below')
+        .setDescription('Need help? Select an option down. come with proofs or we cant really help that much')
         .setColor(0x57F287);
       
       const row = new ActionRowBuilder().addComponents(
@@ -433,7 +433,7 @@ client.on(Events.MessageCreate, async (message) => {
           const logCh = message.guild.channels.cache.get(logChannelId);
           if (logCh) {
             const embed = new EmbedBuilder()
-              .setTitle('👢 Kick')
+              .setTitle(' Kick')
               .setDescription(`**User:** ${target.user.tag} (${target.id})\n**Moderator:** ${message.author.tag}\n**Reason:** ${reason}`)
               .setColor(0xFEE75C)
               .setTimestamp();
