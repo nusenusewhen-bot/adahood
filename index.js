@@ -212,77 +212,135 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// PREFIX COMMANDS
+// PREFIX COMMANDS - FIXED STRUCTURE
 client.on(Events.MessageCreate, async (message) => {
   if (!message.guild || message.author.bot) return;
-  if (!message.content.startsWith('$') && !message.content.startsWith('.')) return;
   
-  const isDollar = message.content.startsWith('$');
-  const args = message.content.slice(1).trim().split(/\s+/);
-  const command = args.shift().toLowerCase();
+  const content = message.content;
   
-  // $panel - Gambling ticket panel
-  if (isDollar && command === 'panel') {
-    if (!isAdmin(message.member)) return message.reply('❌ Admin only');
+  // ========== - COMMANDS (GAMBLING) ==========
+  if (content.startsWith('-')) {
+    const args = content.slice(1).trim().split(/\s+/);
+    const command = args.shift().toLowerCase();
     
-    const embed = new EmbedBuilder()
-      .setTitle('Gambling Middleman Service')
-      .setDescription('Select a tier to create a ticket')
-      .setColor(0x5865F2);
+    // -roll command
+    if (command === 'roll') {
+      const die1 = Math.floor(Math.random() * 6) + 1;
+      const die2 = Math.floor(Math.random() * 6) + 1;
+      
+      const embed = new EmbedBuilder()
+        .setTitle("Da Hood Casino's Dice Roll (6-sided)")
+        .setDescription(`🎲 ${message.member.displayName} rolled ${die1} & ${die2}`)
+        .setColor(0x2B2D31);
+      
+      return message.reply({ embeds: [embed] });
+    }
     
-    const row = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('gamble_select')
-        .setPlaceholder('Select Middleman Tier')
-        .addOptions(
-          new StringSelectMenuOptionBuilder()
-            .setLabel('Middleman 200$ or under')
-            .setDescription('For trades $200 and below')
-            .setValue('mm1'),
-          new StringSelectMenuOptionBuilder()
-            .setLabel('Middleman 500$ and under')
-            .setDescription('For trades $500 and below')
-            .setValue('mm2'),
-          new StringSelectMenuOptionBuilder()
-            .setLabel('Middleman over 1000$+')
-            .setDescription('For high value trades $1000+')
-            .setValue('mm3')
-        )
-    );
+    // -coinflip command
+    if (command === 'coinflip') {
+      const result = Math.random() < 0.5 ? 'heads' : 'tails';
+      
+      const embed = new EmbedBuilder()
+        .setTitle("Coin Flip")
+        .setDescription(`🪙 ${message.member.displayName} flipped **${result}**`)
+        .setColor(0x2B2D31);
+      
+      return message.reply({ embeds: [embed] });
+    }
     
-    return message.channel.send({ embeds: [embed], components: [row] });
+    // -spin command
+    if (command === 'spin') {
+      if (args.length < 2) {
+        return message.reply('❌ Usage: `-spin option1 option2` (minimum 2 options)');
+      }
+      
+      const winner = args[Math.floor(Math.random() * args.length)];
+      
+      const embed = new EmbedBuilder()
+        .setTitle("🎡 Wheel Spin")
+        .setDescription(`${message.member.displayName} spun the wheel...\n\n**Winner:** ${winner}`)
+        .addFields({ name: 'Options', value: args.join(', '), inline: false })
+        .setColor(0x2B2D31);
+      
+      return message.reply({ embeds: [embed] });
+    }
+    
+    return; // Stop here for - commands
   }
   
-  // $supportpanel - Support ticket panel
-  if (isDollar && command === 'supportpanel') {
-    if (!isAdmin(message.member)) return message.reply('❌ Admin only');
+  // ========== $ COMMANDS (ADMIN PANELS) ==========
+  if (content.startsWith('$')) {
+    const args = content.slice(1).trim().split(/\s+/);
+    const command = args.shift().toLowerCase();
     
-    const embed = new EmbedBuilder()
-      .setTitle('Support Center')
-      .setDescription('Need help? Select an option below')
-      .setColor(0x57F287);
+    // $panel - Gambling ticket panel
+    if (command === 'panel') {
+      if (!isAdmin(message.member)) return message.reply('❌ Admin only');
+      
+      const embed = new EmbedBuilder()
+        .setTitle('Gambling Middleman Service')
+        .setDescription('Select a tier to create a ticket')
+        .setColor(0x5865F2);
+      
+      const row = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('gamble_select')
+          .setPlaceholder('Select Middleman Tier')
+          .addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Middleman 200$ or under')
+              .setDescription('For trades $200 and below')
+              .setValue('mm1'),
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Middleman 500$ and under')
+              .setDescription('For trades $500 and below')
+              .setValue('mm2'),
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Middleman over 1000$+')
+              .setDescription('For high value trades $1000+')
+              .setValue('mm3')
+          )
+      );
+      
+      return message.channel.send({ embeds: [embed], components: [row] });
+    }
     
-    const row = new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId('support_select')
-        .setPlaceholder('Select Support Type')
-        .addOptions(
-          new StringSelectMenuOptionBuilder()
-            .setLabel('General Support')
-            .setDescription('Get help with general inquiries')
-            .setValue('support'),
-          new StringSelectMenuOptionBuilder()
-            .setLabel('Report User')
-            .setDescription('Report a user for breaking rules')
-            .setValue('report')
-        )
-    );
+    // $supportpanel - Support ticket panel
+    if (command === 'supportpanel') {
+      if (!isAdmin(message.member)) return message.reply('❌ Admin only');
+      
+      const embed = new EmbedBuilder()
+        .setTitle('Support Center')
+        .setDescription('Need help? Select an option below')
+        .setColor(0x57F287);
+      
+      const row = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+          .setCustomId('support_select')
+          .setPlaceholder('Select Support Type')
+          .addOptions(
+            new StringSelectMenuOptionBuilder()
+              .setLabel('General Support')
+              .setDescription('Get help with general inquiries')
+              .setValue('support'),
+            new StringSelectMenuOptionBuilder()
+              .setLabel('Report User')
+              .setDescription('Report a user for breaking rules')
+              .setValue('report')
+          )
+      );
+      
+      return message.channel.send({ embeds: [embed], components: [row] });
+    }
     
-    return message.channel.send({ embeds: [embed], components: [row] });
+    return; // Stop here for $ commands
   }
   
-  // . commands (staff only)
-  if (!isDollar) {
+  // ========== . COMMANDS (STAFF MODERATION) ==========
+  if (content.startsWith('.')) {
+    const args = content.slice(1).trim().split(/\s+/);
+    const command = args.shift().toLowerCase();
+    
     if (!isStaff(message.member)) return;
 
     try {
@@ -320,7 +378,7 @@ client.on(Events.MessageCreate, async (message) => {
           }
         }
         
-        await message.reply(`✅ Banned **${target.user.tag}** | Reason: ${reason}`);
+        return message.reply(`✅ Banned **${target.user.tag}** | Reason: ${reason}`);
       }
 
       if (command === 'unban') {
@@ -346,7 +404,7 @@ client.on(Events.MessageCreate, async (message) => {
           }
         }
         
-        await message.reply(`✅ Unbanned user ID: **${userId}**`);
+        return message.reply(`✅ Unbanned user ID: **${userId}**`);
       }
 
       if (command === 'kick') {
@@ -383,59 +441,11 @@ client.on(Events.MessageCreate, async (message) => {
           }
         }
         
-        await message.reply(`✅ Kicked **${target.user.tag}** | Reason: ${reason}`);
+        return message.reply(`✅ Kicked **${target.user.tag}** | Reason: ${reason}`);
       }
     } catch (err) {
       console.error(`[ERROR] ${command}:`, err);
-      await message.reply(`❌ Error: ${err.message}`);
-    }
-  }
-  
-  // - commands (gambling/fun commands)
-  if (message.content.startsWith('-')) {
-    const dashArgs = message.content.slice(1).trim().split(/\s+/);
-    const dashCommand = dashArgs.shift().toLowerCase();
-    
-    // -roll command
-    if (dashCommand === 'roll') {
-      const die1 = Math.floor(Math.random() * 6) + 1;
-      const die2 = Math.floor(Math.random() * 6) + 1;
-      
-      const embed = new EmbedBuilder()
-        .setTitle("Da Hood Casino's Dice Roll (6-sided)")
-        .setDescription(`🎲 ${message.member.displayName} rolled ${die1} & ${die2}`)
-        .setColor(0x2B2D31);
-      
-      return message.reply({ embeds: [embed] });
-    }
-    
-    // -coinflip command
-    if (dashCommand === 'coinflip') {
-      const result = Math.random() < 0.5 ? 'heads' : 'tails';
-      
-      const embed = new EmbedBuilder()
-        .setTitle("Coin Flip")
-        .setDescription(`🪙 ${message.member.displayName} flipped **${result}**`)
-        .setColor(0x2B2D31);
-      
-      return message.reply({ embeds: [embed] });
-    }
-    
-    // -spin command
-    if (dashCommand === 'spin') {
-      if (dashArgs.length < 2) {
-        return message.reply('❌ Usage: `-spin option1 option2` (minimum 2 options)');
-      }
-      
-      const winner = dashArgs[Math.floor(Math.random() * dashArgs.length)];
-      
-      const embed = new EmbedBuilder()
-        .setTitle("🎡 Wheel Spin")
-        .setDescription(`${message.member.displayName} spun the wheel...\n\n**Winner:** ${winner}`)
-        .addFields({ name: 'Options', value: dashArgs.join(', '), inline: false })
-        .setColor(0x2B2D31);
-      
-      return message.reply({ embeds: [embed] });
+      return message.reply(`❌ Error: ${err.message}`);
     }
   }
 });
