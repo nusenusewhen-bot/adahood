@@ -10,7 +10,13 @@ db.exec(`
 `);
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildModeration],
+  intents: [
+    GatewayIntentBits.Guilds, 
+    GatewayIntentBits.GuildMessages, 
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers, 
+    GatewayIntentBits.GuildModeration
+  ],
   partials: [Partials.Channel, Partials.Message]
 });
 
@@ -24,16 +30,20 @@ const setConfig = (key, value) => {
 };
 
 const isStaff = (member) => {
+  if (!member) return false;
   const staffRole = getConfig('staff_role');
-  return staffRole && member.roles.cache.has(staffRole);
+  if (!staffRole) return false;
+  return member.roles.cache.has(staffRole);
+};
+
+const isAdmin = (member) => {
+  return member.permissions.has(PermissionFlagsBits.Administrator);
 };
 
 client.once(Events.ClientReady, async () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   
   const commands = [
-    { name: 'panel', description: 'Spawn gambling ticket panel', defaultMemberPermissions: PermissionFlagsBits.Administrator },
-    { name: 'supportpanel', description: 'Spawn support panel', defaultMemberPermissions: PermissionFlagsBits.Administrator },
     { name: 'mm1', description: 'Set MM 200$ role', options: [{ name: 'role', type: 8, description: 'Role', required: true }], defaultMemberPermissions: PermissionFlagsBits.Administrator },
     { name: 'mm2', description: 'Set MM 500$ role', options: [{ name: 'role', type: 8, description: 'Role', required: true }], defaultMemberPermissions: PermissionFlagsBits.Administrator },
     { name: 'mm3', description: 'Set MM 1000$+ role', options: [{ name: 'role', type: 8, description: 'Role', required: true }], defaultMemberPermissions: PermissionFlagsBits.Administrator },
@@ -51,35 +61,12 @@ client.once(Events.ClientReady, async () => {
   console.log('✅ Commands registered');
 });
 
-// Slash commands
+// Slash commands (setup only)
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   const { commandName, options, guild, member } = interaction;
 
   try {
-    if (commandName === 'panel') {
-      const embed = new EmbedBuilder().setTitle('🎰 Gambling Middleman Service').setDescription('Select a tier to create a ticket').setColor(0x5865F2);
-      const row = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder().setCustomId('gamble_select').setPlaceholder('Select Middleman Tier').addOptions(
-          new StringSelectMenuOptionBuilder().setLabel('Middleman 200$ or under').setDescription('For trades $200 and below').setValue('mm1').setEmoji('💰'),
-          new StringSelectMenuOptionBuilder().setLabel('Middleman 500$ and under').setDescription('For trades $500 and below').setValue('mm2').setEmoji('💎'),
-          new StringSelectMenuOptionBuilder().setLabel('Middleman over 1000$+').setDescription('For high value trades $1000+').setValue('mm3').setEmoji('👑')
-        )
-      );
-      await interaction.reply({ embeds: [embed], components: [row] });
-    }
-
-    if (commandName === 'supportpanel') {
-      const embed = new EmbedBuilder().setTitle('📞 Support Center').setDescription('Need help? Select an option below').setColor(0x57F287);
-      const row = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder().setCustomId('support_select').setPlaceholder('Select Support Type').addOptions(
-          new StringSelectMenuOptionBuilder().setLabel('General Support').setDescription('Get help with general inquiries').setValue('support').setEmoji('🎫'),
-          new StringSelectMenuOptionBuilder().setLabel('Report User').setDescription('Report a user for breaking rules').setValue('report').setEmoji('🚨')
-        )
-      );
-      await interaction.reply({ embeds: [embed], components: [row] });
-    }
-
     if (commandName === 'mm1') { setConfig('mm1_role', options.getRole('role').id); await interaction.reply({ content: '✅ MM 200$ role set', ephemeral: true }); }
     if (commandName === 'mm2') { setConfig('mm2_role', options.getRole('role').id); await interaction.reply({ content: '✅ MM 500$ role set', ephemeral: true }); }
     if (commandName === 'mm3') { setConfig('mm3_role', options.getRole('role').id); await interaction.reply({ content: '✅ MM 1000$+ role set', ephemeral: true }); }
@@ -88,8 +75,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (commandName === 'mm3cat') { setConfig('mm3_cat', options.getChannel('category').id); await interaction.reply({ content: '✅ MM 1000$+ category set', ephemeral: true }); }
     if (commandName === 'supportcat') { setConfig('support_cat', options.getChannel('category').id); await interaction.reply({ content: '✅ Support category set', ephemeral: true }); }
     if (commandName === 'reportcat') { setConfig('report_cat', options.getChannel('category').id); await interaction.reply({ content: '✅ Report category set', ephemeral: true }); }
-    if (commandName === 'staff') { setConfig('staff_role', options.getRole('role').id); await interaction.reply({ content: '✅ Staff role set', ephemeral: true }); }
-    
+    if (commandName === 'staff') { setConfig('staff_role', options.getRole('role').id); await interaction.reply({ content: `✅ Staff role set to ${options.getRole('role')}`, ephemeral: true }); }
     if (commandName === 'transcript') {
       const channel = options.getChannel('channel');
       const messages = await channel.messages.fetch({ limit: 100 });
@@ -97,7 +83,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
       messages.reverse().forEach(msg => { transcript += `[${msg.createdAt.toLocaleString()}] ${msg.author.tag}: ${msg.content}\n`; });
       await interaction.reply({ content: `📄 Transcript for ${channel.name}`, files: [{ attachment: Buffer.from(transcript, 'utf-8'), name: `transcript-${channel.name}.txt` }], ephemeral: true });
     }
-
     if (commandName === 'banlog') { setConfig('banlog_channel', options.getChannel('channel').id); await interaction.reply({ content: '✅ Ban log channel set', ephemeral: true }); }
   } catch (err) {
     console.error(err);
@@ -227,51 +212,231 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Prefix commands
+// PREFIX COMMANDS
 client.on(Events.MessageCreate, async (message) => {
   if (!message.guild || message.author.bot) return;
-  if (!message.content.startsWith('.')) return;
+  if (!message.content.startsWith('$') && !message.content.startsWith('.')) return;
   
+  const isDollar = message.content.startsWith('$');
   const args = message.content.slice(1).trim().split(/\s+/);
   const command = args.shift().toLowerCase();
   
-  if (!isStaff(message.member)) return;
+  // $panel - Gambling ticket panel
+  if (isDollar && command === 'panel') {
+    if (!isAdmin(message.member)) return message.reply('❌ Admin only');
+    
+    const embed = new EmbedBuilder()
+      .setTitle('Gambling Middleman Service')
+      .setDescription('Select a tier to create a ticket')
+      .setColor(0x5865F2);
+    
+    const row = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('gamble_select')
+        .setPlaceholder('Select Middleman Tier')
+        .addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel('Middleman 200$ or under')
+            .setDescription('For trades $200 and below')
+            .setValue('mm1'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('Middleman 500$ and under')
+            .setDescription('For trades $500 and below')
+            .setValue('mm2'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('Middleman over 1000$+')
+            .setDescription('For high value trades $1000+')
+            .setValue('mm3')
+        )
+    );
+    
+    return message.channel.send({ embeds: [embed], components: [row] });
+  }
+  
+  // $supportpanel - Support ticket panel
+  if (isDollar && command === 'supportpanel') {
+    if (!isAdmin(message.member)) return message.reply('❌ Admin only');
+    
+    const embed = new EmbedBuilder()
+      .setTitle('Support Center')
+      .setDescription('Need help? Select an option below')
+      .setColor(0x57F287);
+    
+    const row = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId('support_select')
+        .setPlaceholder('Select Support Type')
+        .addOptions(
+          new StringSelectMenuOptionBuilder()
+            .setLabel('General Support')
+            .setDescription('Get help with general inquiries')
+            .setValue('support'),
+          new StringSelectMenuOptionBuilder()
+            .setLabel('Report User')
+            .setDescription('Report a user for breaking rules')
+            .setValue('report')
+        )
+    );
+    
+    return message.channel.send({ embeds: [embed], components: [row] });
+  }
+  
+  // . commands (staff only)
+  if (!isDollar) {
+    if (!isStaff(message.member)) return;
 
-  try {
-    if (command === 'ban') {
-      const target = message.mentions.members.first() || await message.guild.members.fetch(args[0]).catch(() => null);
-      if (!target) return message.reply('❌ User not found');
-      const reason = args.slice(1).join(' ') || 'No reason';
-      await target.ban({ reason });
-      
-      const logCh = message.guild.channels.cache.get(getConfig('banlog_channel'));
-      if (logCh) await logCh.send({ embeds: [new EmbedBuilder().setTitle('🔨 Ban').setDescription(`**User:** ${target.user.tag}\n**Mod:** ${message.author.tag}\n**Reason:** ${reason}`).setColor(0xED4245).setTimestamp()] });
-      await message.reply(`✅ Banned ${target.user.tag}`);
-    }
+    try {
+      if (command === 'ban') {
+        let target = message.mentions.members.first();
+        let userId = args[0]?.replace(/[<@!>]/g, '');
+        
+        if (!target && userId) {
+          target = await message.guild.members.fetch(userId).catch(() => null);
+        }
+        
+        if (!target) return message.reply('❌ User not found. Use: `.ban @user` or `.ban userID`');
+        
+        if (!message.guild.members.me.permissions.has(PermissionFlagsBits.BanMembers)) {
+          return message.reply('❌ Bot lacks "Ban Members" permission');
+        }
+        
+        if (message.guild.members.me.roles.highest.position <= target.roles.highest.position) {
+          return message.reply('❌ Bot role must be higher than target user\'s role');
+        }
+        
+        const reason = args.slice(1).join(' ') || 'No reason provided';
+        await target.ban({ reason });
+        
+        const logChannelId = getConfig('banlog_channel');
+        if (logChannelId) {
+          const logCh = message.guild.channels.cache.get(logChannelId);
+          if (logCh) {
+            const embed = new EmbedBuilder()
+              .setTitle('🔨 Ban')
+              .setDescription(`**User:** ${target.user.tag} (${target.id})\n**Moderator:** ${message.author.tag}\n**Reason:** ${reason}`)
+              .setColor(0xED4245)
+              .setTimestamp();
+            await logCh.send({ embeds: [embed] });
+          }
+        }
+        
+        await message.reply(`✅ Banned **${target.user.tag}** | Reason: ${reason}`);
+      }
 
-    if (command === 'unban') {
-      const userId = args[0];
-      if (!userId) return message.reply('❌ Provide user ID');
-      await message.guild.members.unban(userId);
-      
-      const logCh = message.guild.channels.cache.get(getConfig('banlog_channel'));
-      if (logCh) await logCh.send({ embeds: [new EmbedBuilder().setTitle('🔓 Unban').setDescription(`**User ID:** ${userId}\n**Mod:** ${message.author.tag}`).setColor(0x57F287).setTimestamp()] });
-      await message.reply(`✅ Unbanned ${userId}`);
-    }
+      if (command === 'unban') {
+        const userId = args[0]?.replace(/[<@!>]/g, '');
+        if (!userId) return message.reply('❌ Provide user ID: `.unban userID`');
+        
+        if (!message.guild.members.me.permissions.has(PermissionFlagsBits.BanMembers)) {
+          return message.reply('❌ Bot lacks "Ban Members" permission');
+        }
+        
+        await message.guild.members.unban(userId);
+        
+        const logChannelId = getConfig('banlog_channel');
+        if (logChannelId) {
+          const logCh = message.guild.channels.cache.get(logChannelId);
+          if (logCh) {
+            const embed = new EmbedBuilder()
+              .setTitle('🔓 Unban')
+              .setDescription(`**User ID:** ${userId}\n**Moderator:** ${message.author.tag}`)
+              .setColor(0x57F287)
+              .setTimestamp();
+            await logCh.send({ embeds: [embed] });
+          }
+        }
+        
+        await message.reply(`✅ Unbanned user ID: **${userId}**`);
+      }
 
-    if (command === 'kick') {
-      const target = message.mentions.members.first() || await message.guild.members.fetch(args[0]).catch(() => null);
-      if (!target) return message.reply('❌ User not found');
-      const reason = args.slice(1).join(' ') || 'No reason';
-      await target.kick(reason);
-      
-      const logCh = message.guild.channels.cache.get(getConfig('banlog_channel'));
-      if (logCh) await logCh.send({ embeds: [new EmbedBuilder().setTitle('👢 Kick').setDescription(`**User:** ${target.user.tag}\n**Mod:** ${message.author.tag}\n**Reason:** ${reason}`).setColor(0xFEE75C).setTimestamp()] });
-      await message.reply(`✅ Kicked ${target.user.tag}`);
+      if (command === 'kick') {
+        let target = message.mentions.members.first();
+        let userId = args[0]?.replace(/[<@!>]/g, '');
+        
+        if (!target && userId) {
+          target = await message.guild.members.fetch(userId).catch(() => null);
+        }
+        
+        if (!target) return message.reply('❌ User not found. Use: `.kick @user` or `.kick userID`');
+        
+        if (!message.guild.members.me.permissions.has(PermissionFlagsBits.KickMembers)) {
+          return message.reply('❌ Bot lacks "Kick Members" permission');
+        }
+        
+        if (message.guild.members.me.roles.highest.position <= target.roles.highest.position) {
+          return message.reply('❌ Bot role must be higher than target user\'s role');
+        }
+        
+        const reason = args.slice(1).join(' ') || 'No reason provided';
+        await target.kick(reason);
+        
+        const logChannelId = getConfig('banlog_channel');
+        if (logChannelId) {
+          const logCh = message.guild.channels.cache.get(logChannelId);
+          if (logCh) {
+            const embed = new EmbedBuilder()
+              .setTitle('👢 Kick')
+              .setDescription(`**User:** ${target.user.tag} (${target.id})\n**Moderator:** ${message.author.tag}\n**Reason:** ${reason}`)
+              .setColor(0xFEE75C)
+              .setTimestamp();
+            await logCh.send({ embeds: [embed] });
+          }
+        }
+        
+        await message.reply(`✅ Kicked **${target.user.tag}** | Reason: ${reason}`);
+      }
+    } catch (err) {
+      console.error(`[ERROR] ${command}:`, err);
+      await message.reply(`❌ Error: ${err.message}`);
     }
-  } catch (err) {
-    console.error(err);
-    await message.reply('❌ Failed');
+  }
+  
+  // - commands (gambling/fun commands)
+  if (message.content.startsWith('-')) {
+    const dashArgs = message.content.slice(1).trim().split(/\s+/);
+    const dashCommand = dashArgs.shift().toLowerCase();
+    
+    // -roll command
+    if (dashCommand === 'roll') {
+      const die1 = Math.floor(Math.random() * 6) + 1;
+      const die2 = Math.floor(Math.random() * 6) + 1;
+      
+      const embed = new EmbedBuilder()
+        .setTitle("Da Hood Casino's Dice Roll (6-sided)")
+        .setDescription(`🎲 ${message.member.displayName} rolled ${die1} & ${die2}`)
+        .setColor(0x2B2D31);
+      
+      return message.reply({ embeds: [embed] });
+    }
+    
+    // -coinflip command
+    if (dashCommand === 'coinflip') {
+      const result = Math.random() < 0.5 ? 'heads' : 'tails';
+      
+      const embed = new EmbedBuilder()
+        .setTitle("Coin Flip")
+        .setDescription(`🪙 ${message.member.displayName} flipped **${result}**`)
+        .setColor(0x2B2D31);
+      
+      return message.reply({ embeds: [embed] });
+    }
+    
+    // -spin command
+    if (dashCommand === 'spin') {
+      if (dashArgs.length < 2) {
+        return message.reply('❌ Usage: `-spin option1 option2` (minimum 2 options)');
+      }
+      
+      const winner = dashArgs[Math.floor(Math.random() * dashArgs.length)];
+      
+      const embed = new EmbedBuilder()
+        .setTitle("🎡 Wheel Spin")
+        .setDescription(`${message.member.displayName} spun the wheel...\n\n**Winner:** ${winner}`)
+        .addFields({ name: 'Options', value: dashArgs.join(', '), inline: false })
+        .setColor(0x2B2D31);
+      
+      return message.reply({ embeds: [embed] });
+    }
   }
 });
 
